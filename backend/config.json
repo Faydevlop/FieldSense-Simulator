@@ -1,0 +1,17 @@
+{
+  "DEV": {
+    "PORT": 7008,
+    "SWAGGER_URLS": "http://localhost:7008",
+    "CORS_URLS": "http://localhost:3000,http://localhost:5173"
+  },
+  "STAGE": {
+    "PORT": 7008,
+    "SWAGGER_URLS": "https://api-stage.example.com",
+    "CORS_URLS": "https://app-stage.example.com"
+  },
+  "PROD": {
+    "PORT": 7008,
+    "SWAGGER_URLS": "https://api.example.com",
+    "CORS_URLS": "https://app.example.com"
+  }
+}
