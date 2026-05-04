@@ -1,0 +1,599 @@
+FieldSense Backend Workflow
+===========================
+
+Purpose
+-------
+This backend runs the Plant Growth Simulation API.
+
+It is intentionally simple:
+- Express handles HTTP requests.
+- Controllers validate request data and return responses.
+- The simulation controller calls the simulation engine directly.
+- The simulation engine calculates the next plant state.
+- Data is stored in memory only.
+- There is no MongoDB, Mongoose, or database connection.
+
+
+Main Startup Flow
+-----------------
+Entry file:
+src/index.ts
+
+What happens when the backend starts:
+1. Express app is created.
+2. JSON and URL encoded body parsers are enabled.
+3. Security middleware is enabled:
+   - helmet
+   - hpp
+4. CORS is configured from CORS_URLS in the backend .env file.
+5. Root route "/" returns a simple backend running response.
+6. Swagger bundle is generated.
+7. All version 1 routes are mounted at /v1.
+8. Static files are served from the public folder.
+9. Unknown routes return a 404 response.
+10. Unhandled errors return a 500 response.
+
+Important CORS note:
+If Swagger or frontend requests are blocked, check backend/.env and make sure
+CORS_URLS contains the frontend origin, for example:
+http://localhost:5173
+
+
+Response Format
+---------------
+All API responses follow this shape:
+
+{
+  "status": 200,
+  "message": "success",
+  "data": {},
+  "toastMessage": "successfully fetched details"
+}
+
+Error responses use the same shape with an error status and message:
+
+{
+  "status": 400,
+  "message": "water and sunlight must be low, medium, or high",
+  "data": {},
+  "toastMessage": "Invalid environment levels"
+}
+
+
+Backend Folder Roles
+--------------------
+src/controller/base/index.ts
+Contains simple backend health/info controllers.
+
+src/controller/generic/index.ts
+Contains only generic constants API logic.
+Simulation code should not be added here.
+
+src/controller/simulation/index.ts
+Contains the simulation request logic.
+This is where request body validation, in-memory store updates, and API responses happen.
+
+src/routes/v1/base/index.ts
+Routes for base APIs.
+
+src/routes/v1/generic/index.ts
+Routes for generic APIs.
+
+src/routes/v1/simulation/index.ts
+Routes for simulation APIs.
+
+src/routes/v1/index.ts
+Combines all v1 route groups.
+
+src/services/simulationEngine.ts
+Pure simulation calculation logic.
+This file should not read from requests, write responses, or update the store.
+
+src/utils/v1/types.ts
+Shared TypeScript types for plant type, simulation, and simulation states.
+
+src/utils/v1/simulationStore.ts
+In-memory storage object.
+Data is lost when the server restarts.
+
+src/swagger.ts
+Swagger/OpenAPI documentation for the backend APIs.
+
+
+Controllers In This Backend
+---------------------------
+There are 3 controller groups.
+
+1. Base Controller
+File:
+src/controller/base/index.ts
+
+Functions:
+- ping
+- version
+- test
+
+Purpose:
+These APIs are used to check if the backend is running and to return service metadata.
+
+Routes:
+- GET /v1/ping
+- GET /v1/version
+- GET /v1/test
+
+
+2. Generic Controller
+File:
+src/controller/generic/index.ts
+
+Functions:
+- getAllConstants
+
+Purpose:
+This API returns common constants used by the project.
+Generic is only for common/non-simulation APIs.
+
+Route:
+- GET /v1/generic/constants
+
+
+3. Simulation Controller
+File:
+src/controller/simulation/index.ts
+
+Functions:
+- startSimulation
+- runSimulation
+- getSimulation
+- resetSimulation
+
+Purpose:
+This controller owns the Plant Growth Simulation API flow.
+It validates input, calls the engine, updates the in-memory store, and sends the response.
+
+Routes:
+- POST /v1/simulation/start
+- POST /v1/simulation/run
+- GET /v1/simulation/:id
+- POST /v1/simulation/reset
+
+
+Route Flow
+----------
+All v1 routes start from:
+src/routes/v1/index.ts
+
+Current route mounting:
+- /v1/ping goes to base routes
+- /v1/version goes to base routes
+- /v1/test goes to base routes
+- /v1/generic/constants goes to generic routes
+- /v1/simulation/start goes to simulation routes
+- /v1/simulation/run goes to simulation routes
+- /v1/simulation/:id goes to simulation routes
+- /v1/simulation/reset goes to simulation routes
+
+
+Simulation Data Types
+---------------------
+File:
+src/utils/v1/types.ts
+
+ConditionLevel:
+- low
+- medium
+- high
+
+PlantType:
+- id
+- name
+- idealWater
+- idealSunlight
+- growthRate
+- stressThreshold
+
+Simulation:
+- id
+- plantType
+- currentDay
+- status
+
+SimulationState:
+- day
+- water
+- sunlight
+- growth
+- health
+- state
+
+Plant health states:
+- healthy
+- stressed
+- dead
+
+Simulation status:
+- running
+- completed
+
+
+In-Memory Storage
+-----------------
+File:
+src/utils/v1/simulationStore.ts
+
+Storage shape:
+
+simulationStore = {
+  simulations: {},
+  states: {}
+}
+
+simulations:
+Stores one main simulation record per simulation id.
+
+Example:
+simulationStore.simulations["sim-123"] = {
+  id: "sim-123",
+  plantType: {...},
+  currentDay: 3,
+  status: "running"
+}
+
+states:
+Stores the day-by-day timeline for each simulation id.
+
+Example:
+simulationStore.states["sim-123"] = [
+  { day: 1, water: "medium", sunlight: "medium", growth: 8.5, health: 100, state: "healthy" },
+  { day: 2, water: "low", sunlight: "medium", growth: 13.75, health: 90, state: "healthy" }
+]
+
+Important:
+This is not permanent storage.
+If the backend restarts, all simulations are cleared.
+
+
+Simulation Engine Logic
+-----------------------
+File:
+src/services/simulationEngine.ts
+
+Main exported function:
+simulateNextState(...)
+
+The engine is a pure function.
+It does not:
+- read req.body
+- return Express responses
+- write to simulationStore
+- call APIs
+- use database logic
+
+It only receives input and returns the next SimulationState.
+
+
+Engine Inputs
+-------------
+simulateNextState receives:
+- day
+- plantType
+- water
+- sunlight
+- previousState
+
+day:
+The day number being calculated.
+
+plantType:
+The plant profile, including ideal water/sunlight, growth rate, and stress threshold.
+
+water:
+The water level applied for this day.
+
+sunlight:
+The sunlight level applied for this day.
+
+previousState:
+The previous day state.
+For day 1 this is null.
+
+
+Condition Matching
+------------------
+The engine checks two things:
+1. actual water against plantType.idealWater
+2. actual sunlight against plantType.idealSunlight
+
+Each check becomes either:
+- match
+- mismatch
+
+Examples:
+If idealWater is "medium" and water is "medium", that is 1 match.
+If idealSunlight is "medium" and sunlight is "high", that is 1 mismatch.
+
+The engine totals:
+- matches
+- mismatches
+
+There are only two condition checks, so possible totals are:
+- 2 matches, 0 mismatches
+- 1 match, 1 mismatch
+- 0 matches, 2 mismatches
+
+
+Health Calculation
+------------------
+Base health:
+- day 1 starts from 100
+- later days start from previousState.health
+
+Health delta formula:
+matches * 2 - mismatches * 12
+
+Examples:
+- Perfect conditions: 2 matches, 0 mismatches -> +4 health
+- One condition wrong: 1 match, 1 mismatch -> -10 health
+- Both conditions wrong: 0 matches, 2 mismatches -> -24 health
+
+Health is always clamped between 0 and 100.
+
+
+Plant State Calculation
+-----------------------
+After health is calculated:
+
+If health < 20:
+state = "dead"
+
+Else if health < plantType.stressThreshold:
+state = "stressed"
+
+Else:
+state = "healthy"
+
+Example:
+If stressThreshold is 40:
+- health 80 -> healthy
+- health 30 -> stressed
+- health 10 -> dead
+
+
+Growth Calculation
+------------------
+Base growth:
+- day 1 starts from 0
+- later days start from previousState.growth
+
+Growth multiplier formula:
+1 + matches * 0.35 - mismatches * 0.3
+
+Growth delta formula:
+plantType.growthRate * multiplier
+
+Examples with growthRate 5:
+- Perfect conditions: 2 matches -> multiplier 1.7 -> growth +8.5
+- One condition wrong: 1 match, 1 mismatch -> multiplier 1.05 -> growth +5.25
+- Both conditions wrong: 2 mismatches -> multiplier 0.4 -> growth +2
+
+Growth is rounded to 2 decimal places and accumulates over time.
+The backend does not cap growth at 100.
+The frontend may display growth as a 0 to 100 percentage for UI readability.
+
+If the previous plant state is dead, growth delta becomes 0.
+
+
+Start Simulation Flow
+---------------------
+Endpoint:
+POST /v1/simulation/start
+
+Controller:
+startSimulation
+
+Request body:
+{
+  "plantType": {
+    "id": "plant-1",
+    "name": "Generic Plant",
+    "idealWater": "medium",
+    "idealSunlight": "medium",
+    "growthRate": 5,
+    "stressThreshold": 40
+  },
+  "water": "medium",
+  "sunlight": "medium"
+}
+
+What the controller does:
+1. Reads plantType, water, and sunlight from req.body.
+2. Validates plantType exists.
+3. Validates plantType id and name.
+4. Validates idealWater and idealSunlight are low, medium, or high.
+5. Validates growthRate is a positive number.
+6. Validates stressThreshold is between 1 and 100.
+7. Validates water and sunlight are low, medium, or high.
+8. Creates a simple simulation id using timestamp and random text.
+9. Calls simulateNextState for day 1.
+10. Stores the Simulation in simulationStore.simulations.
+11. Stores day 1 state in simulationStore.states.
+12. Returns the simulation id, current day, and first state.
+
+Response:
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "simulationId": "sim-123",
+    "currentDay": 1,
+    "state": {
+      "growth": 8.5,
+      "health": 100,
+      "state": "healthy"
+    }
+  },
+  "toastMessage": "Simulation started successfully"
+}
+
+
+Run Simulation Flow
+-------------------
+Endpoint:
+POST /v1/simulation/run
+
+Controller:
+runSimulation
+
+Request body:
+{
+  "simulationId": "sim-123",
+  "days": 7,
+  "water": "medium",
+  "sunlight": "high"
+}
+
+What the controller does:
+1. Reads simulationId, days, water, and sunlight from req.body.
+2. Validates simulationId.
+3. Validates days is a positive integer.
+4. Finds the simulation in simulationStore.simulations.
+5. Validates water/sunlight if they are passed.
+6. Gets the current timeline from simulationStore.states.
+7. If the simulation is already completed, it returns without simulating more days.
+8. Loops one day at a time.
+9. For each day, calls simulateNextState.
+10. Pushes the new state into the timeline.
+11. Updates simulation.currentDay.
+12. Stops early if the plant becomes dead.
+13. Saves the updated simulation and timeline.
+14. Returns latest state and how many days were simulated.
+
+If water or sunlight is not passed:
+- The controller uses the previous state's water/sunlight.
+- If previous state is missing, it falls back to the plant ideal value.
+
+Response:
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "simulationId": "sim-123",
+    "currentDay": 8,
+    "status": "running",
+    "daysSimulated": 7,
+    "latestState": {
+      "day": 8,
+      "water": "medium",
+      "sunlight": "high",
+      "growth": 45.25,
+      "health": 70,
+      "state": "healthy"
+    }
+  },
+  "toastMessage": "Simulation ran successfully"
+}
+
+
+Get Simulation Flow
+-------------------
+Endpoint:
+GET /v1/simulation/:id
+
+Controller:
+getSimulation
+
+What the controller does:
+1. Reads the id from req.params.id.
+2. Finds the simulation in simulationStore.simulations.
+3. Finds the timeline in simulationStore.states.
+4. Returns both together.
+
+Response:
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "simulation": {
+      "id": "sim-123",
+      "currentDay": 3,
+      "status": "running"
+    },
+    "timeline": [
+      { "day": 1, "growth": 8.5, "health": 100, "state": "healthy" },
+      { "day": 2, "growth": 17, "health": 100, "state": "healthy" },
+      { "day": 3, "growth": 22.25, "health": 90, "state": "healthy" }
+    ]
+  },
+  "toastMessage": "Simulation fetched successfully"
+}
+
+
+Reset Simulation Flow
+---------------------
+Endpoint:
+POST /v1/simulation/reset
+
+Controller:
+resetSimulation
+
+Request body:
+{
+  "simulationId": "sim-123"
+}
+
+What the controller does:
+1. Reads simulationId from req.body.
+2. Validates simulationId.
+3. Checks the simulation exists.
+4. Deletes simulationStore.states[simulationId].
+5. Deletes simulationStore.simulations[simulationId].
+6. Returns success.
+
+This removes that simulation completely from memory.
+The frontend starts a new simulation after reset.
+
+
+Swagger Flow
+------------
+File:
+src/swagger.ts
+
+Swagger documents:
+- Base endpoints
+- Generic constants endpoint
+- Simulation endpoints
+
+The built swagger files are generated into:
+public/swagger
+
+Local Swagger UI can be opened from the backend static public files depending on project setup.
+
+
+How To Run Backend
+------------------
+Install dependencies:
+npm install
+
+Development:
+npm run dev
+
+Build:
+npm run build
+
+Start compiled output:
+npm start
+
+Type check only:
+npm run typecheck
+
+
+Important Rules For Future Backend Changes
+------------------------------------------
+- Do not add MongoDB or Mongoose.
+- Do not use src/db/connection.ts.
+- Keep simulation routes under src/routes/v1/simulation.
+- Keep simulation controller under src/controller/simulation.
+- Keep generic controller only for generic/common APIs.
+- Keep response format consistent.
+- Keep the simulation engine pure.
+- Store runtime simulation data only in simulationStore.

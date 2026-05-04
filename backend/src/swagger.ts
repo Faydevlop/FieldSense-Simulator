@@ -56,7 +56,7 @@ const options: swaggerJSDoc.Options = {
       },
     },
     paths: {
-      "/v1/generic/simulation/start": {
+      "/v1/simulation/start": {
         post: {
           tags: ["Simulation"],
           summary: "Start a new plant growth simulation",
@@ -119,7 +119,7 @@ const options: swaggerJSDoc.Options = {
           },
         },
       },
-      "/v1/generic/simulation/run": {
+      "/v1/simulation/run": {
         post: {
           tags: ["Simulation"],
           summary: "Run an existing simulation forward by N days",
@@ -133,11 +133,15 @@ const options: swaggerJSDoc.Options = {
                   properties: {
                     simulationId: { type: "string", example: "sim-123" },
                     days: { type: "number", example: 2 },
+                    water: { $ref: "#/components/schemas/ConditionLevel" },
+                    sunlight: { $ref: "#/components/schemas/ConditionLevel" },
                   },
                 },
                 example: {
                   simulationId: "sim-123",
                   days: 2,
+                  water: "medium",
+                  sunlight: "medium",
                 },
               },
             },
@@ -172,7 +176,7 @@ const options: swaggerJSDoc.Options = {
           },
         },
       },
-      "/v1/generic/simulation/{id}": {
+      "/v1/simulation/{id}": {
         get: {
           tags: ["Simulation"],
           summary: "Get a simulation and its timeline",
@@ -214,7 +218,7 @@ const options: swaggerJSDoc.Options = {
           },
         },
       },
-      "/v1/generic/simulation/reset": {
+      "/v1/simulation/reset": {
         post: {
           tags: ["Simulation"],
           summary: "Reset (delete) a simulation from in-memory store",

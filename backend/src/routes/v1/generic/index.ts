@@ -1,11 +1,5 @@
 import { Router } from "express";
-import {
-  getAllConstants,
-  getSimulation,
-  resetSimulation,
-  runSimulation,
-  startSimulation,
-} from "../../../controller/generic";
+import { getAllConstants } from "../../../controller/generic";
 
 const router = Router();
 
@@ -22,9 +16,5 @@ const router = Router();
  *         description: Constants fetched successfully
  */
 router.get("/constants", getAllConstants);
-router.post("/simulation/start", startSimulation);
-router.post("/simulation/run", runSimulation);
-router.get("/simulation/:id", getSimulation);
-router.post("/simulation/reset", resetSimulation);
 
 export default router;
