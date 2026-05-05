@@ -12,6 +12,9 @@ export function HomePage() {
         <Link className="btn btn-primary home-hero__cta" to="/simulate">
           Open Simulation
         </Link>
+        <Link className="btn btn-soft home-hero__cta home-hero__cta--alt" to="/simulate/advanced">
+          Open Advanced Lab
+        </Link>
       </section>
 
       <section className="home-grid">
@@ -26,6 +29,10 @@ export function HomePage() {
         <article className="home-tile">
           <h3>Review Observation Logs</h3>
           <p>Read a timeline of growth deltas, condition snapshots, and applied state notes.</p>
+        </article>
+        <article className="home-tile">
+          <h3>Use Scenario Lab</h3>
+          <p>Save runs, compare timelines side by side, and export advanced results to CSV.</p>
         </article>
       </section>
     </div>

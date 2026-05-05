@@ -4,7 +4,7 @@ import { GrowthChartCard } from "../components/GrowthChartCard";
 import { PlantSimulationCard } from "../components/PlantSimulationCard";
 import { getSimulation, resetSimulation, runSimulation, startSimulation } from "../api/simulationApi";
 import { ConditionLevel, ControlValues, PlantHealthState, PlantType, Simulation, SimulationState } from "../types/simulation";
-import { getPlantImage, resolveGrowthStage } from "../utils/plantAssets";
+import { getPlantImage, GROWTH_STAGE_LABELS, resolveGrowthStage } from "../utils/plantAssets";
 
 const defaultPlant: PlantType = {
   id: "plant-1",
@@ -14,6 +14,26 @@ const defaultPlant: PlantType = {
   growthRate: 5,
   stressThreshold: 40,
 };
+
+function getLiveInsightMessage(controls: ControlValues, healthState: PlantHealthState): string {
+  if (healthState === "dead") {
+    return "Plant vitality has fully collapsed. Restart with balanced water and light to recover.";
+  }
+
+  if (controls.water === "low" && controls.sunlight === "high") {
+    return "High sunlight with low water is overheating the plant and draining moisture.";
+  }
+
+  if (controls.water === "high" && controls.sunlight === "low") {
+    return "High water with low sunlight can saturate roots and slow oxygen flow.";
+  }
+
+  if (healthState === "stressed") {
+    return "Stress is building. Move toward medium water and medium sunlight for stability.";
+  }
+
+  return "Conditions are stable for this stage. Keep care levels steady to maintain healthy growth.";
+}
 
 export function SimulationPage() {
   const [controls, setControls] = useState<ControlValues>({
@@ -33,7 +53,9 @@ export function SimulationPage() {
   const currentHealth = currentState?.health ?? 100;
   const currentGrowth = Math.max(0, Math.min(100, currentState?.growth ?? 0));
   const stage = resolveGrowthStage(currentState);
+  const stageLabel = GROWTH_STAGE_LABELS[stage];
   const plantImage = getPlantImage(stage, healthState);
+  const liveInsight = getLiveInsightMessage(controls, healthState);
 
   let statusText = "Plant is thriving under current conditions.";
   if (healthState === "stressed") {
@@ -161,6 +183,8 @@ export function SimulationPage() {
           sunlightLevel={controls.sunlight}
           imageSrc={plantImage}
           health={currentHealth}
+          stageLabel={stageLabel}
+          liveInsight={liveInsight}
         />
 
         <GrowthChartCard timeline={timeline} currentGrowth={currentGrowth} currentHealth={currentHealth} />

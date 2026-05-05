@@ -18,8 +18,11 @@ export function HeaderBar() {
               <NavLink to="/" end className={({ isActive }) => (isActive ? "is-active" : "")}>
                 Home
               </NavLink>
-              <NavLink to="/simulate" className={({ isActive }) => (isActive ? "is-active" : "")}>
+              <NavLink to="/simulate" end className={({ isActive }) => (isActive ? "is-active" : "")}>
                 Simulation
+              </NavLink>
+              <NavLink to="/simulate/advanced" className={({ isActive }) => (isActive ? "is-active" : "")}>
+                Advanced Lab
               </NavLink>
             </nav>
           </div>

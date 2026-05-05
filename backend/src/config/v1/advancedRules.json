@@ -1,0 +1,140 @@
+[
+  {
+    "id": "heat_stress_low_water",
+    "priority": 100,
+    "probability": 1,
+    "conditions": {
+      "water": ["low"],
+      "sunlight": ["high"]
+    },
+    "effects": {
+      "healthDelta": -18,
+      "growthMultiplier": -0.35,
+      "stressDelta": 20
+    },
+    "note": "Low water with high sunlight pushes heat stress."
+  },
+  {
+    "id": "root_rot_risk",
+    "priority": 96,
+    "probability": 1,
+    "conditions": {
+      "water": ["high"],
+      "sunlight": ["low"]
+    },
+    "effects": {
+      "healthDelta": -12,
+      "growthMultiplier": -0.28,
+      "stressDelta": 15
+    },
+    "note": "Too much water and weak sunlight increases root stress."
+  },
+  {
+    "id": "optimal_growth_band",
+    "priority": 90,
+    "probability": 1,
+    "conditions": {
+      "water": ["medium"],
+      "sunlight": ["medium"],
+      "soilMoisture": ["medium"],
+      "humidity": ["medium", "high"],
+      "fertilizerLevel": ["medium"]
+    },
+    "effects": {
+      "healthDelta": 4,
+      "growthMultiplier": 0.32,
+      "stressDelta": -8
+    },
+    "note": "Balanced conditions support stable, healthy growth."
+  },
+  {
+    "id": "recovery_window",
+    "priority": 82,
+    "probability": 0.75,
+    "conditions": {
+      "water": ["medium"],
+      "sunlight": ["medium"],
+      "humidity": ["high"]
+    },
+    "effects": {
+      "healthDelta": 6,
+      "growthMultiplier": 0.12,
+      "stressDelta": -10
+    },
+    "note": "High humidity sometimes speeds recovery under stable care."
+  },
+  {
+    "id": "low_humidity_heat_penalty",
+    "priority": 80,
+    "probability": 1,
+    "conditions": {
+      "humidity": ["low"],
+      "temperature": ["high"]
+    },
+    "effects": {
+      "healthDelta": -9,
+      "growthMultiplier": -0.2,
+      "stressDelta": 13
+    },
+    "note": "Hot and dry air increases transpiration stress."
+  },
+  {
+    "id": "fertilizer_burn_risk",
+    "priority": 74,
+    "probability": 1,
+    "conditions": {
+      "fertilizerLevel": ["high"],
+      "temperature": ["high"]
+    },
+    "effects": {
+      "healthDelta": -8,
+      "growthMultiplier": -0.1,
+      "stressDelta": 8
+    },
+    "note": "Strong fertilizer in heat can burn roots."
+  },
+  {
+    "id": "loamy_soil_bonus",
+    "priority": 55,
+    "probability": 1,
+    "conditions": {
+      "soilType": ["loamy"]
+    },
+    "effects": {
+      "healthDelta": 2,
+      "growthMultiplier": 0.1,
+      "stressDelta": -3
+    },
+    "note": "Loamy soil supports balanced water and nutrient flow."
+  },
+  {
+    "id": "clay_moisture_buffer",
+    "priority": 45,
+    "probability": 1,
+    "conditions": {
+      "soilType": ["clay"],
+      "soilMoisture": ["high", "medium"]
+    },
+    "effects": {
+      "healthDelta": 1,
+      "growthMultiplier": 0.06,
+      "stressDelta": -2
+    },
+    "note": "Clay can buffer moisture when not overwatered."
+  },
+  {
+    "id": "sandy_dry_penalty",
+    "priority": 44,
+    "probability": 1,
+    "conditions": {
+      "soilType": ["sandy"],
+      "soilMoisture": ["low"]
+    },
+    "effects": {
+      "healthDelta": -6,
+      "growthMultiplier": -0.16,
+      "stressDelta": 7
+    },
+    "note": "Sandy soil dries quickly and needs tighter watering."
+  }
+]
