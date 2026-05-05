@@ -1,4 +1,4 @@
-import { ConditionLevel, PlantHealthState, PlantType, SimulationState } from "../utils/v1/types";
+import { ConditionLevel, PlantHealthState, PlantType, Simulation, SimulationRunStatus, SimulationState } from "../utils/v1/types";
 
 const DAY_ONE_HEALTH = 100;
 const DEAD_HEALTH_THRESHOLD = 20;
@@ -24,6 +24,22 @@ interface SimulationEngineInput {
 interface ConditionStats {
   matches: number;
   mismatches: number;
+}
+
+interface SimulateDaysInput {
+  simulation: Pick<Simulation, "currentDay" | "status" | "plantType">;
+  timeline: SimulationState[];
+  days: number;
+  waterOverride?: ConditionLevel;
+  sunlightOverride?: ConditionLevel;
+}
+
+interface SimulateDaysResult {
+  timeline: SimulationState[];
+  currentDay: number;
+  status: SimulationRunStatus;
+  daysSimulated: number;
+  latestState: SimulationState | null;
 }
 
 function roundToTwo(value: number): number {
@@ -98,3 +114,54 @@ export function simulateNextState({
   };
 }
 
+export function simulateDays({ simulation, timeline, days, waterOverride, sunlightOverride }: SimulateDaysInput): SimulateDaysResult {
+  const nextTimeline = [...timeline];
+
+  if (simulation.status === "completed") {
+    return {
+      timeline: nextTimeline,
+      currentDay: simulation.currentDay,
+      status: simulation.status,
+      daysSimulated: 0,
+      latestState: nextTimeline[nextTimeline.length - 1] || null,
+    };
+  }
+
+  let previousState = nextTimeline[nextTimeline.length - 1] || null;
+  let currentDay = simulation.currentDay;
+  let status: SimulationRunStatus = simulation.status;
+  let daysSimulated = 0;
+
+  for (let index = 0; index < days; index += 1) {
+    const nextDay = currentDay + 1;
+    const nextState = simulateNextState({
+      day: nextDay,
+      plantType: simulation.plantType,
+      water: (waterOverride || previousState?.water || simulation.plantType.idealWater) as ConditionLevel,
+      sunlight: (sunlightOverride || previousState?.sunlight || simulation.plantType.idealSunlight) as ConditionLevel,
+      previousState,
+    });
+
+    nextTimeline.push(nextState);
+    currentDay = nextDay;
+    previousState = nextState;
+    daysSimulated += 1;
+
+    if (nextState.state === "dead") {
+      status = "completed";
+      break;
+    }
+  }
+
+  if (status !== "completed") {
+    status = "running";
+  }
+
+  return {
+    timeline: nextTimeline,
+    currentDay,
+    status,
+    daysSimulated,
+    latestState: nextTimeline[nextTimeline.length - 1] || null,
+  };
+}

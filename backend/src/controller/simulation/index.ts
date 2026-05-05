@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { simulateNextState } from "../../services/simulationEngine";
+import { simulateDays, simulateNextState } from "../../services/simulationEngine";
 import { simulationStore } from "../../utils/v1/simulationStore";
 import { ConditionLevel, PlantType, Simulation } from "../../utils/v1/types";
 
@@ -175,53 +175,19 @@ export async function runSimulation(req: Request, res: Response): Promise<void> 
     }
 
     const timeline = simulationStore.states[simulationId] || [];
+    const simulationResult = simulateDays({
+      simulation,
+      timeline,
+      days,
+      waterOverride: waterLevel ? (waterLevel as ConditionLevel) : undefined,
+      sunlightOverride: sunlightLevel ? (sunlightLevel as ConditionLevel) : undefined,
+    });
 
-    if (simulation.status === "completed") {
-      res.status(200).json({
-        status: 200,
-        message: "success",
-        data: {
-          simulationId,
-          currentDay: simulation.currentDay,
-          status: simulation.status,
-          daysSimulated: 0,
-          latestState: timeline[timeline.length - 1] || null,
-        },
-        toastMessage: "Simulation ran successfully",
-      });
-      return;
-    }
-
-    let previousState = timeline[timeline.length - 1] || null;
-    let daysSimulated = 0;
-
-    for (let index = 0; index < days; index += 1) {
-      const nextDay = simulation.currentDay + 1;
-      const nextState = simulateNextState({
-        day: nextDay,
-        plantType: simulation.plantType,
-        water: (waterLevel || previousState?.water || simulation.plantType.idealWater) as ConditionLevel,
-        sunlight: (sunlightLevel || previousState?.sunlight || simulation.plantType.idealSunlight) as ConditionLevel,
-        previousState,
-      });
-
-      timeline.push(nextState);
-      simulation.currentDay = nextDay;
-      previousState = nextState;
-      daysSimulated += 1;
-
-      if (nextState.state === "dead") {
-        simulation.status = "completed";
-        break;
-      }
-    }
-
-    if (simulation.status !== "completed") {
-      simulation.status = "running";
-    }
+    simulation.currentDay = simulationResult.currentDay;
+    simulation.status = simulationResult.status;
 
     simulationStore.simulations[simulationId] = simulation;
-    simulationStore.states[simulationId] = timeline;
+    simulationStore.states[simulationId] = simulationResult.timeline;
 
     res.status(200).json({
       status: 200,
@@ -230,8 +196,8 @@ export async function runSimulation(req: Request, res: Response): Promise<void> 
         simulationId,
         currentDay: simulation.currentDay,
         status: simulation.status,
-        daysSimulated,
-        latestState: timeline[timeline.length - 1] || null,
+        daysSimulated: simulationResult.daysSimulated,
+        latestState: simulationResult.latestState,
       },
       toastMessage: "Simulation ran successfully",
     });
